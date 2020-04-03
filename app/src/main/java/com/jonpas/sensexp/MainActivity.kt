@@ -7,7 +7,11 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.CompoundButton
+import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
+
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -23,9 +27,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val captureSwitch: Switch = findViewById(R.id.capture)
+        captureSwitch.setOnCheckedChangeListener(captureSwitchOnCheckedChangeListener)
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         linearAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-        sensorManager.registerListener(this, linearAccel, accDelay)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -44,16 +49,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val x = values[0]
         val y = values[1]
         val z = values[2]
-        Log.d(TAG, "x= $x y= $y z= $z")
-    }
-
-    override fun onResume() {
-        super.onResume()
-        sensorManager.registerListener(this, linearAccel, accDelay)
+        Log.v(TAG, "x = $x, y = $y, z = $z")
     }
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+    }
+
+    private val captureSwitchOnCheckedChangeListener = CompoundButton.OnCheckedChangeListener { compoundButton: CompoundButton, state: Boolean ->
+        if (state) {
+            sensorManager.registerListener(this, linearAccel, accDelay)
+        } else {
+            sensorManager.unregisterListener(this)
+        }
     }
 }
