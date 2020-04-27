@@ -1,6 +1,7 @@
 package com.jonpas.sensexp
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -11,11 +12,11 @@ import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.CompoundButton
-import android.widget.Switch
-import android.widget.TextView
+import android.view.inputmethod.InputMethodManager
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import java.io.File
 import java.io.IOException
 
 
@@ -33,15 +34,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     )
     private var permissionsAccepted = false
     private var firePrompt: TextView? = null
+    private var experimentNameField: EditText? = null
+
+    private var fileName: String = ""
 
     // Audio
     private var recorder: MediaRecorder? = null
-    private var fileName: String = ""
 
     // Sensor
     private lateinit var sensorManager: SensorManager
     private lateinit var linearAccel: Sensor
     private var accDelay: Int = SensorManager.SENSOR_DELAY_FASTEST
+    private var samplesFile: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +57,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         captureSwitch.setOnCheckedChangeListener(captureSwitchOnCheckedChangeListener)
         firePrompt = findViewById(R.id.firePrompt)
         firePrompt?.visibility = View.INVISIBLE
+        experimentNameField = findViewById(R.id.name)
 
         // Sensor
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -93,10 +98,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
     private fun startCapture() {
-        // Sensor
-        sensorManager.registerListener(this, linearAccel, accDelay)
+        // Hide keyboard
+        val inputManager: InputMethodManager =
+            getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputManager.hideSoftInputFromWindow(
+            currentFocus!!.windowToken,
+            InputMethodManager.HIDE_NOT_ALWAYS
+        )
 
-        // Audio
+        // Create base file name
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
+        val experimentName = experimentNameField?.text ?: ""
+        fileName = "${getExternalFilesDir(null)}/${timestamp}_${experimentName}"
+
+        // Start gathering data
+        startSensorAcquisition()
         startRecording()
 
         // Prompt
@@ -105,26 +121,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun stopCapture() {
-        // Sensor
-        sensorManager.unregisterListener(this)
+        if (firePrompt?.visibility != View.INVISIBLE) {
+            // Stop gathering data
+            stopSensorAcquisition()
+            stopRecording()
 
-        // Audio
-        stopRecording()
-
-        // Prompt
-        firePrompt?.visibility = View.INVISIBLE
+            // Prompt
+            firePrompt?.visibility = View.INVISIBLE
+        }
     }
 
     // Audio
     private fun startRecording() {
-        var timestamp = "timestamp"
-        fileName = "${getExternalFilesDir("SensExp")}/${timestamp}_audio.3gp"
-        Log.i(LOG_TAG, "Writing to: $fileName")
+        val filePath = "${fileName}_audio.3gp"
+        Log.i(LOG_TAG, "Writing audio to: $filePath")
 
         recorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-            setOutputFile(fileName)
+            setOutputFile(filePath)
             setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
 
             try {
@@ -146,19 +161,33 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     // Sensor
+    private fun startSensorAcquisition() {
+        val filePath = "${fileName}_samples.csv"
+        Log.i(LOG_TAG, "Writing sensor data to: $filePath}")
+
+        samplesFile = File(filePath)
+        samplesFile!!.createNewFile()
+
+        sensorManager.registerListener(this, linearAccel, accDelay)
+    }
+
+    private fun stopSensorAcquisition() {
+        sensorManager.unregisterListener(this)
+
+        Toast.makeText(this, "Experiment saved!", Toast.LENGTH_SHORT).show()
+    }
+
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
-            processLinearAccel(event)
-        }
-    }
+            val values = event.values
+            val x = values[0]
+            val y = values[1]
+            val z = values[2]
 
-    private fun processLinearAccel(event: SensorEvent) {
-        val values = event.values
-        val x = values[0]
-        val y = values[1]
-        val z = values[2]
-        //Log.v(LOG_TAG, "x = $x, y = $y, z = $z")
+            //Log.v(LOG_TAG, "x = $x, y = $y, z = $z")
+            samplesFile?.appendText("${event.timestamp.toString()} $x $y $z \n", Charsets.UTF_8)
+        }
     }
 }
