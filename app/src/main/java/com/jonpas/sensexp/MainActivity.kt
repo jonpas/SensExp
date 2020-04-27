@@ -10,6 +10,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.media.MediaRecorder
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -18,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import java.io.File
 import java.io.IOException
+import kotlin.random.Random
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -32,20 +34,22 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
         Manifest.permission.RECORD_AUDIO
     )
-    private var permissionsAccepted = false
-    private var firePrompt: TextView? = null
-    private var experimentNameField: EditText? = null
+    private lateinit var firePrompt: TextView
+    private lateinit var captureSwitch: Switch
+    private lateinit var experimentNameField: EditText
 
     private var fileName: String = ""
+    private var capturing: Boolean = false
 
     // Audio
-    private var recorder: MediaRecorder? = null
+    private lateinit var recorder: MediaRecorder
 
     // Sensor
     private lateinit var sensorManager: SensorManager
     private lateinit var linearAccel: Sensor
     private var accDelay: Int = SensorManager.SENSOR_DELAY_FASTEST
     private var samplesFile: File? = null
+    private var startTimestamp: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,10 +57,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Capture
         ActivityCompat.requestPermissions(this, permissions, PERMISSIONS_REQUEST_CODE)
-        val captureSwitch: Switch = findViewById(R.id.capture)
+        captureSwitch = findViewById(R.id.capture)
         captureSwitch.setOnCheckedChangeListener(captureSwitchOnCheckedChangeListener)
         firePrompt = findViewById(R.id.firePrompt)
-        firePrompt?.visibility = View.INVISIBLE
+        firePrompt.visibility = View.INVISIBLE
         experimentNameField = findViewById(R.id.name)
 
         // Sensor
@@ -71,6 +75,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onPause() {
         super.onPause()
+        stopCapture()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
         stopCapture()
     }
 
@@ -108,27 +117,77 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Create base file name
         val timestamp = (System.currentTimeMillis() / 1000).toString()
-        val experimentName = experimentNameField?.text ?: ""
+        val experimentName = experimentNameField.text
         fileName = "${getExternalFilesDir(null)}/${timestamp}_${experimentName}"
 
         // Start gathering data
         startSensorAcquisition()
         startRecording()
+        capturing = true
 
-        // Prompt
-        firePrompt?.visibility = View.VISIBLE
-        firePrompt?.text = getString(R.string.fire_in)
+        // Random repeating prompt
+        startCountdown(2, 5, 3)
     }
 
     private fun stopCapture() {
-        if (firePrompt?.visibility != View.INVISIBLE) {
+        if (capturing) {
             // Stop gathering data
             stopSensorAcquisition()
             stopRecording()
+            capturing = false
+            startTimestamp = 0
 
             // Prompt
-            firePrompt?.visibility = View.INVISIBLE
+            firePrompt.visibility = View.INVISIBLE
+            Toast.makeText(this, "Experiment saved!", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun startCountdown(randMin: Int, randMax: Int, pause: Int) {
+        // Get random countdown time
+        val random = Random.nextInt((randMax - randMin) + 1) + randMin
+        Log.v(LOG_TAG, "Countdown: $random seconds")
+
+        // Start countdown
+        object: CountDownTimer(random.toLong() * 1000, 100) {
+            override fun onTick(millisUntilFinished: Long) {
+                // Cancel if stopped mid-countdown
+                if (!capturing) {
+                    cancel()
+                }
+
+                // Display prompts
+                if (millisUntilFinished <= 1000) {
+                    firePrompt.text = getString(R.string.fire_now)
+                } else {
+                    firePrompt.text = getString(R.string.fire_in, millisUntilFinished / 1000)
+                }
+            }
+
+            override fun onFinish() {
+                firePrompt.visibility = View.INVISIBLE
+
+                // Restart countdown after given pause
+                restartCountdown(randMin, randMax, pause)
+            }
+        }.start()
+
+        firePrompt.visibility = View.VISIBLE
+    }
+
+    private fun restartCountdown(randMin: Int, randMax: Int, pause: Int) {
+        object: CountDownTimer(pause.toLong() * 1000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                // Cancel if stopped mid-countdown
+                if (!capturing) {
+                    cancel()
+                }
+            }
+
+            override fun onFinish() {
+                startCountdown(randMin, randMax, pause)
+            }
+        }.start()
     }
 
     // Audio
@@ -153,11 +212,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun stopRecording() {
-        recorder?.apply {
+        recorder.apply {
             stop()
             release()
         }
-        recorder = null
     }
 
     // Sensor
@@ -173,8 +231,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun stopSensorAcquisition() {
         sensorManager.unregisterListener(this)
-
-        Toast.makeText(this, "Experiment saved!", Toast.LENGTH_SHORT).show()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -186,8 +242,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             val y = values[1]
             val z = values[2]
 
-            //Log.v(LOG_TAG, "x = $x, y = $y, z = $z")
-            samplesFile?.appendText("${event.timestamp.toString()} $x $y $z \n", Charsets.UTF_8)
+            if (startTimestamp == 0L) {
+                startTimestamp = event.timestamp
+            }
+
+            val timestampDiff = (event.timestamp - startTimestamp) / 1000000
+            val fireNowPromptVisible = firePrompt.text == getString(R.string.fire_now)
+            samplesFile?.appendText("$timestampDiff $x $y $z ${fireNowPromptVisible}\n", Charsets.UTF_8)
         }
     }
 }
