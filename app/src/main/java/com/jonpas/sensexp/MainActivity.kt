@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // Sensor
     private fun startSensorAcquisition() {
         val filePath = "${fileName}_samples.csv"
-        Log.i(LOG_TAG, "Writing sensor data to: $filePath}")
+        Log.i(LOG_TAG, "Writing sensor data to: $filePath")
 
         samplesFile = File(filePath)
         samplesFile!!.createNewFile()
