@@ -247,8 +247,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
 
             val timestampDiff = (event.timestamp - startTimestamp) / 1000000
-            val fireNowPromptVisible = firePrompt.text == getString(R.string.fire_now)
-            samplesFile?.appendText("$timestampDiff $x $y $z ${fireNowPromptVisible}\n", Charsets.UTF_8)
+            val firePromptShown = firePrompt.visibility == View.VISIBLE && firePrompt.text == getString(R.string.fire_now)
+            samplesFile?.appendText("$timestampDiff $x $y $z ${firePromptShown}\n", Charsets.UTF_8)
         }
     }
 }
