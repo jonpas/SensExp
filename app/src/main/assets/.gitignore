@@ -1,1 +1,5 @@
-app.properties
+# Ignore everything in this directory
+*
+# Except this file and default configuration
+!.gitignore
+!default.properties

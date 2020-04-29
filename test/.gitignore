@@ -1,1 +1,5 @@
-mqtt_mosquitto_app.sh
+# Ignore everything in this directory
+*
+# Except this file and default configuration
+!.gitignore
+!mqtt_mosquitto_default.sh
