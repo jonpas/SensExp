@@ -25,8 +25,8 @@ import kotlin.random.Random
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
     companion object {
-        private const val LOG_TAG: String = "SensExp"
-        private const val PERMISSIONS_REQUEST_CODE = 333
+        private const val TAG: String = "SensExp"
+        private const val PERMISSIONS_REQUEST_CODE: Int = 333
     }
 
     // Capture (wraps audio, sensor, UI and permissions)
@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var samplesFile: File? = null
     private var startTimestamp: Long = 0
 
+    // MQTT
+    private lateinit var mqtt: MQTT
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -66,6 +69,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Sensor
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         linearAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+
+        // MQTT
+        mqtt = MQTT(applicationContext)
+        if (mqtt.isValid()) {
+            mqtt.connect()
+        }
     }
 
     override fun onStop() {
@@ -81,6 +90,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         stopCapture()
+        mqtt.disconnect()
     }
 
     // Capture
@@ -146,7 +156,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun startCountdown(randMin: Int, randMax: Int, pause: Int) {
         // Get random countdown time
         val random = Random.nextInt((randMax - randMin) + 1) + randMin
-        Log.v(LOG_TAG, "Countdown: $random seconds")
+        Log.v(TAG, "Countdown: $random seconds")
 
         // Start countdown
         object: CountDownTimer(random.toLong() * 1000, 100) {
@@ -193,7 +203,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // Audio
     private fun startRecording() {
         val filePath = "${fileName}_audio.3gp"
-        Log.i(LOG_TAG, "Writing audio to: $filePath")
+        Log.i(TAG, "Writing audio to: $filePath")
 
         recorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -204,7 +214,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             try {
                 prepare()
             } catch (e: IOException) {
-                Log.e(LOG_TAG, "prepare() failed")
+                Log.e(TAG, "prepare() failed")
             }
 
             start()
@@ -221,7 +231,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     // Sensor
     private fun startSensorAcquisition() {
         val filePath = "${fileName}_samples.csv"
-        Log.i(LOG_TAG, "Writing sensor data to: $filePath")
+        Log.i(TAG, "Writing sensor data to: $filePath")
 
         samplesFile = File(filePath)
         samplesFile!!.createNewFile()
@@ -248,7 +258,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
             val timestampDiff = (event.timestamp - startTimestamp) / 1000000
             val firePromptShown = firePrompt.visibility == View.VISIBLE && firePrompt.text == getString(R.string.fire_now)
-            samplesFile?.appendText("$timestampDiff $x $y $z ${firePromptShown}\n", Charsets.UTF_8)
+            val text = "$timestampDiff $x $y $z ${firePromptShown}\n"
+
+            // CSV
+            samplesFile?.appendText(text, Charsets.UTF_8)
+
+            // MQTT
+            mqtt.publish(text)
         }
     }
 }

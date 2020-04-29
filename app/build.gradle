@@ -2,18 +2,33 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+def properties = new Properties()
+try {
+    def propertiesFile = rootProject.file("app/src/main/assets/app.properties")
+    properties.load(new FileInputStream(propertiesFile))
+} catch (IOException ex) {
+    def propertiesFile = rootProject.file("app/src/main/assets/default.properties")
+    properties.load(new FileInputStream(propertiesFile))
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
 
     defaultConfig {
         applicationId "com.jonpas.sensexp"
-        minSdkVersion 14
+        minSdkVersion 24
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "MQTT_SERVER_URI", properties['MQTT_SERVER_URI']
+        buildConfigField "String", "MQTT_USERNAME", properties['MQTT_USERNAME']
+        buildConfigField "String", "MQTT_PASSWORD", properties['MQTT_PASSWORD']
+        buildConfigField "String", "MQTT_PUBLISH_TOPIC", properties['MQTT_PUBLISH_TOPIC']
+        buildConfigField "String", "MQTT_SUBSCRIBE_TOPIC", properties['MQTT_SUBSCRIBE_TOPIC']
     }
 
     buildTypes {
@@ -25,6 +40,12 @@ android {
 
 }
 
+repositories {
+    maven {
+        url "https://repo.eclipse.org/content/repositories/paho-snapshots/"
+    }
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
@@ -34,4 +55,7 @@ dependencies {
     testImplementation 'junit:junit:4.13'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
+    implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
 }
