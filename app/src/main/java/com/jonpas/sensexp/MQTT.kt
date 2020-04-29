@@ -38,10 +38,6 @@ class MQTT(context: Context) {
         })
     }
 
-    fun setCallback(callback: MqttCallbackExtended) {
-        client.setCallback(callback)
-    }
-
     fun connect() {
         val connectOptions = MqttConnectOptions()
         connectOptions.mqttVersion = MqttConnectOptions.MQTT_VERSION_3_1_1
