@@ -4,6 +4,8 @@ Simple experimental application for gathering data for later analysis in a senso
 
 Goal of the experiment is to prove or disprove the ability to accurately sense a shot has been taken with a gas airsoft pistol using a regular Android phone and its on-board sensors (microphone and linear accelerometer).
 
+Additionally it publishes live capture data via MQTT.
+
 ### Usage
 
 - Run application
@@ -34,3 +36,10 @@ Simple Python script to plot audio and linear accelerometer data for further ana
 
 **Run:**
 - `$ python plot_experiment.py <name>.3gp <name>.csv`
+
+
+---
+
+Stand By | Countdown | Should Fire
+:---:|:---:|:---:
+![standby](assets/standby.png) | ![countdown](assets/countdown.png) | ![shouldfire](assets/shouldfire.png)
