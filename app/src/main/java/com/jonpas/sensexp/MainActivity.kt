@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Create base file name
         val timestamp = (System.currentTimeMillis() / 1000).toString()
-        val experimentName = experimentNameField.text
+        val experimentName = experimentNameField.text.toString().replace(" ", "");
         fileName = "${getExternalFilesDir(null)}/${timestamp}_${experimentName}"
 
         // Start gathering data
