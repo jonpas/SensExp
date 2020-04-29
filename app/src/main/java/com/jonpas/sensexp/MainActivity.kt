@@ -90,7 +90,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         stopCapture()
-        mqtt.disconnect()
+
+        if (mqtt.isValid()) {
+            mqtt.disconnect()
+        }
     }
 
     // Capture

@@ -28,7 +28,6 @@ android {
         buildConfigField "String", "MQTT_USERNAME", properties['MQTT_USERNAME']
         buildConfigField "String", "MQTT_PASSWORD", properties['MQTT_PASSWORD']
         buildConfigField "String", "MQTT_PUBLISH_TOPIC", properties['MQTT_PUBLISH_TOPIC']
-        buildConfigField "String", "MQTT_SUBSCRIBE_TOPIC", properties['MQTT_SUBSCRIBE_TOPIC']
     }
 
     buildTypes {

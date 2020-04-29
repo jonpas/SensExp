@@ -14,7 +14,6 @@ class MQTT(context: Context) {
         private const val USERNAME: String = BuildConfig.MQTT_USERNAME
         private const val PASSWORD: String = BuildConfig.MQTT_PASSWORD
         private const val PUBLISH_TOPIC: String = BuildConfig.MQTT_PUBLISH_TOPIC
-        private const val SUBSCRIBE_TOPIC: String = BuildConfig.MQTT_SUBSCRIBE_TOPIC
     }
 
     private var client: MqttAndroidClient
@@ -59,7 +58,6 @@ class MQTT(context: Context) {
                     disconnectedBufferOpts.isPersistBuffer = false
                     disconnectedBufferOpts.isDeleteOldestMessages = false
                     client.setBufferOpts(disconnectedBufferOpts)
-                    //subscribe(SUBSCRIBE_TOPIC)
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
@@ -90,26 +88,6 @@ class MQTT(context: Context) {
             }
         }
     }
-
-    /*fun subscribe(topic: String) {
-        try {
-            client.subscribe(topic, qos, null, object: IMqttActionListener {
-                override fun onSuccess(asyncActionToken: IMqttToken) {
-                    Log.i(TAG, "Subscribed!")
-                }
-
-                override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
-                    Log.w(TAG, "Subscribe failed for: $topic\n$exception")
-                }
-            })
-        } catch (e: MqttException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun unsubscribe(topic: String) {
-
-    }*/
 
     // Check if configuration is properly defined (not default empty)
     fun isValid(): Boolean {
